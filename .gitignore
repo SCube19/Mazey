@@ -1,0 +1,7 @@
+./
+../
+.vs/
+MazeGenerator.sln
+MazeGenerator/./
+MazeGenerator/../
+MazeGenerator/MazeGenerator.pyproj
