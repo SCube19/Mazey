@@ -111,15 +111,14 @@ def makeMaze():
     #return startPos, endPos, shape of maze
     return startPos, (endI, endJ), connections
 
-#################################################
+###############################################################################
 
 ############################# DRAWING FUNCTIONS ###############################
 #drawing given maze on screen
-def drawMaze(screen, maze, CELL_SIZE, WALL_THICKNESS, ):
-    #thickness of walls, size and color of filling rectangles 
+def drawMaze(screen, maze, CELL_SIZE, WALL_THICKNESS, CONNECTION_COLOR):
+    #thickness of walls, size of filling rectangles 
     FILL_SIZE = CELL_SIZE - 2 * WALL_THICKNESS
-    CONNECTION_COLOR = (0, 40, 100)
-    LINE_COLOR = (32, 165, 55)
+    LINE_COLOR = (200, 50, 100)
     #filling screen with white so we can fill connections with CONNECTION_COLOR
     screen.fill(LINE_COLOR)
     for i in range(height):
@@ -141,12 +140,14 @@ def drawMaze(screen, maze, CELL_SIZE, WALL_THICKNESS, ):
                 pygame.draw.rect(screen, CONNECTION_COLOR, (FILL_CENTER_POS_X - WALL_THICKNESS, FILL_CENTER_POS_Y, WALL_THICKNESS, FILL_SIZE))
 
 #drawing player rect
-def drawPlayer(screen, playerPos, CELL_SIZE, WALL_THICKNESS):
+def drawPlayer(screen, playerPos, previous, CELL_SIZE, WALL_THICKNESS, CONNECTION_COLOR):
     FILL_SIZE = CELL_SIZE - 2 * WALL_THICKNESS
     PLAYER_COLOR = (255, 120, 0)
+    pygame.draw.rect(screen, CONNECTION_COLOR, (WALL_THICKNESS + CELL_SIZE * previous[1], WALL_THICKNESS + CELL_SIZE * previous[0], FILL_SIZE, FILL_SIZE))
     pygame.draw.rect(screen, PLAYER_COLOR, (WALL_THICKNESS + CELL_SIZE * playerPos[1], WALL_THICKNESS + CELL_SIZE * playerPos[0], FILL_SIZE, FILL_SIZE))
+   
 
-#######################################################################
+###############################################################################################
 
 ################################# INTERACTIVE FUNCTIONS ####################################
 #checking if move is viable
@@ -154,7 +155,10 @@ def validMove(i, j, maze, dir):
     return not outOfRange(i, j) and opposite(dir) in maze[i][j]
 
 #updating player according to an input
-def playerMovement(event, playerPos, maze):
+def playerMovement(event, playerPos, previous, maze):
+   #for some reason when updating previous y coord we need to also change previous x coord and vice versa
+   previous[0] = playerPos[0]
+   previous[1] = playerPos[1]
    if event.key == pygame.K_LEFT and validMove(playerPos[0], playerPos[1] - 1, maze, dir.LEFT):
        playerPos[1] -= 1
    elif event.key == pygame.K_RIGHT and validMove(playerPos[0], playerPos[1] + 1, maze, dir.RIGHT):
@@ -170,36 +174,72 @@ def playerMovement(event, playerPos, maze):
 #main game loop function
 def runGame(startPos, endPos, maze):
     #some constants
-    FPS_MAX = 15
-    CELL_SIZE = 30
-    WALL_THICKNESS = 2
+    #we fetch screen height
+    SCREEN_H = pygame.display.Info().current_h
+    #if height of the maze is less than 50 then half the screen is enough on 1920x1080 screen (more responsive design later)
+    if height < 50:
+        SCREEN_H = SCREEN_H // 2
+    #we choose height as our scaling factor (// to avoid grid tearing )
+    CELL_SIZE = SCREEN_H // height
+    print(CELL_SIZE)
+    #
+    WINDOW_HEIGHT = int(CELL_SIZE * height)
+    print(WINDOW_HEIGHT)
+    WINDOW_WIDTH = int(CELL_SIZE * width) 
+    print(WINDOW_WIDTH)
+    #no more fps (and by that input events) are needed
+    FPS_MAX = 30
+    #it needs to be at least 1 but then we scale it to fit smaller mazes
+    WALL_THICKNESS = int(CELL_SIZE * 0.05) + 1
+    print(WALL_THICKNESS)
+    #ground color, personal preference (can add interactive color choice later)
+    CONNECTION_COLOR = (0, 100, 200)
 
     #used for framerate limit
     fpsClock = pygame.time.Clock()
+    #playerPos init at the opening
+    playerPos = [startPos[0], startPos[1]]
+    previous = [startPos[0], startPos[1]]
+
     #start window
-    screen = pygame.display.set_mode((CELL_SIZE * width, CELL_SIZE * height))
+    screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
     pygame.display.flip()
 
-    playerPos = [startPos[0], startPos[1]]
+    #we only need to draw maze once, then we need only to update player and his previous square
+    drawMaze(screen, maze, CELL_SIZE, WALL_THICKNESS, CONNECTION_COLOR)
+    drawPlayer(screen, playerPos, previous, CELL_SIZE, WALL_THICKNESS, CONNECTION_COLOR)
 
+    #main game loop
     running = True
     while running:
+        #events
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.KEYDOWN:
-                playerMovement(event, playerPos, maze)
+                playerMovement(event, playerPos, previous, maze)
         
-        drawMaze(screen, maze, CELL_SIZE, WALL_THICKNESS)
-        drawPlayer(screen, playerPos, CELL_SIZE, WALL_THICKNESS)
-
+        #rest of logic 
+        drawPlayer(screen, playerPos, previous, CELL_SIZE, WALL_THICKNESS, CONNECTION_COLOR)
         pygame.display.update()
-
         fpsClock.tick(FPS_MAX)
 
-#####################################################################################
+#################################################################################################
 startPos, endPos, connections = makeMaze()
+pygame.init()
 runGame(startPos, endPos, connections)
 
 
 
+#TODO:
+# ADD RESTRAINS TO MAZE SIZE
+# MAKE INTERACTIVE START SCREEN WHERE YOU CAN CHOOSE SIZE AND COLOR OF THE MAZE
+# PATHFINDING ALGORITHM (DIJKSTRA AND A* MAYBE DFS)
+# MORE RESPONSIVE WINDOW
+# BUG: YOU CAN GO DIAGONALLY GIVEN THE RIGHT INPUT (LEAVE IT OR FLUSH EVENTS AFTER MOVEMENT ACTION)
+# REFACTOR MAYBE
+#
+#
+#
+#
+#
